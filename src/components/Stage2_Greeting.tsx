@@ -60,7 +60,7 @@ export default function Stage2Greeting({ age, onNext }: Props) {
           transition={{ delay: 0.5, duration: 1 }}
           style={{ fontSize: '3rem', lineHeight: 1.2 }}
         >
-          Happy <span style={{ color: 'var(--pink-main)', textShadow: '0 2px 10px rgba(255, 182, 193, 0.6)' }}>{age}th</span> Birthday,<br/>Sensei 🌸
+          Happy <span style={{ color: '#d87093', WebkitTextFillColor: 'initial', textShadow: '0 2px 10px rgba(255, 182, 193, 0.4)' }}>{age}th</span> Birthday,<br/>Sensei <span className="emoji">🌸</span>
         </motion.h1>
       </div>
       

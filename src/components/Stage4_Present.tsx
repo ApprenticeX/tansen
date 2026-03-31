@@ -33,7 +33,7 @@ export default function Stage4Present({ onOpen }: Props) {
       transition={{ duration: 0.8 }}
     >
       <h1 className="elegant" style={{ opacity: opened ? 0 : 1, transition: '0.5s' }}>
-        A gift awaits... 🎁
+        A gift awaits... <span className="emoji">🎁</span>
       </h1>
       
       <p style={{ opacity: opened ? 0 : 0.6, fontSize: '1rem', transition: '0.4s', marginBottom: '80px' }}>

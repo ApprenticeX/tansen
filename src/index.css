@@ -82,8 +82,8 @@ h1.elegant {
   font-weight: 500;
   margin-bottom: 24px;
   letter-spacing: -0.5px;
-  /* Chrome/Safari polished metal text effect */
-  background: linear-gradient(to right, var(--text-color), #7a7a7a);
+  /* Warmer, deeper rose-brown gradient for excellent contrast */
+  background: linear-gradient(to right, #4a3b40, #966b79);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.05));
@@ -92,6 +92,12 @@ h1.elegant {
   background: linear-gradient(to right, #ffffff, #a0b2c6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+/* Fix emoji rendering when inside text-clipped elements */
+.emoji {
+  -webkit-text-fill-color: initial;
+  background: none;
 }
 
 /* Glassmorphism Buttons */
