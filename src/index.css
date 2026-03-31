@@ -1,0 +1,136 @@
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Outfit:wght@300;400;500;600&display=swap');
+
+:root {
+  --pink-light: #fff0f5;
+  --pink-main: #ffb6c1;
+  --pink-dark: #d87093;
+  --gold: #d4af37;
+  --text-main: #4a4a4a;
+  
+  --bg-color: var(--pink-light);
+  --text-color: var(--text-main);
+}
+
+.theme-winter {
+  --bg-color: #0d1b2a;
+  --text-color: #e0e1dd;
+  --pink-main: #415a77;
+  --gold: #778da9;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 1s ease, color 1s ease;
+  overflow: hidden; /* Prevent scrolling, handle per stage */
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  overscroll-behavior: none; /* Prevent pull to refresh */
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+.stage-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 24px;
+  text-align: center;
+}
+
+h1.elegant {
+  font-family: 'Outfit', serif;
+  font-size: 2.2rem;
+  font-weight: 500;
+  margin-bottom: 24px;
+  color: var(--text-color);
+}
+
+.handwriting {
+  font-family: 'Dancing Script', cursive;
+  font-size: 1.8rem;
+  line-height: 1.5;
+  text-align: left;
+}
+
+button.primary-btn {
+  background-color: var(--pink-main);
+  color: white;
+  border: none;
+  border-radius: 30px;
+  padding: 16px 32px;
+  font-size: 1.2rem;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 500;
+  box-shadow: 0 4px 15px rgba(255, 182, 193, 0.4);
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+  margin-bottom: 16px;
+  width: 100%;
+  max-width: 300px;
+}
+
+button.primary-btn:active {
+  transform: scale(0.96);
+}
+
+.theme-winter button.primary-btn {
+  background-color: var(--gold);
+  color: #0d1b2a;
+  box-shadow: 0 4px 15px rgba(119, 141, 169, 0.3);
+}
+
+select.dropdown {
+  padding: 12px;
+  border-radius: 20px;
+  border: 1px solid var(--pink-main);
+  background: white;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1rem;
+  color: var(--text-main);
+  width: 100%;
+  max-width: 200px;
+  text-align: center;
+  appearance: none;
+}
+
+.sparkle {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* Snowflake animation */
+@keyframes fall {
+  0% { transform: translateY(-10vh) translateX(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(110vh) translateX(20px); opacity: 0; }
+}
+
+.snowflake {
+  position: absolute;
+  color: white;
+  font-size: 1rem;
+  user-select: none;
+  animation: fall linear forwards;
+  pointer-events: none;
+}
