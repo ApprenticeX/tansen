@@ -7,20 +7,20 @@ interface Props {
 
 export default function Stage4Present({ onOpen }: Props) {
   const [opened, setOpened] = useState(false);
-  const ribbonControls = useAnimation();
+  const lidControls = useAnimation();
 
   const handleDragEnd = (event: any, info: any) => {
     if (opened) return;
     
-    // If dragged downward significantly, trigger open
-    if (info.offset.y > 60) {
+    // If dragged upward significantly, trigger open
+    if (info.offset.y < -50) {
       setOpened(true);
       setTimeout(() => {
         onOpen();
-      }, 2000);
+      }, 2500);
     } else {
-      // Snap back if not pulled enough
-      ribbonControls.start({ y: 0, transition: { type: 'spring', stiffness: 300, damping: 20 } });
+      // Snap back down if not pulled high enough
+      lidControls.start({ y: 0, transition: { type: 'spring', stiffness: 300, damping: 20 } });
     }
   };
 
@@ -33,84 +33,80 @@ export default function Stage4Present({ onOpen }: Props) {
       transition={{ duration: 0.8 }}
     >
       <h1 className="elegant" style={{ opacity: opened ? 0 : 1, transition: '0.5s' }}>
-        Are you ready for your present? 🎁
+        A gift awaits... 🎁
       </h1>
+      
+      <p style={{ opacity: opened ? 0 : 0.6, fontSize: '1rem', transition: '0.4s', marginBottom: '80px' }}>
+        Grab the lid and pull up to open!
+      </p>
 
-      <div style={{ position: 'relative', marginTop: 30, display: 'flex', justifyContent: 'center' }}>
-        <motion.div
-          animate={opened ? { y: -100, opacity: 0, rotate: 15 } : { y: [0, -10, 0] }}
-          transition={opened ? { duration: 0.8 } : { duration: 2, repeat: Infinity }}
-          style={{ position: 'relative', zIndex: 10 }}
+      <div style={{ position: 'relative', width: 220, height: 180, display: 'flex', justifyContent: 'center' }}>
+        
+        {/* The Box Base */}
+        <motion.div 
+          animate={opened ? { scale: 1.05, y: 10 } : { scale: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          style={{
+            position: 'absolute', bottom: 0, width: '100%', height: 160, 
+            background: 'linear-gradient(135deg, rgba(255,182,193,0.9), rgba(216,112,147,0.8))',
+            backdropFilter: 'blur(10px)',
+            boxShadow: 'inset -5px -5px 15px rgba(0,0,0,0.1), 0 20px 40px rgba(0,0,0,0.15)',
+            border: '1px solid rgba(255,255,255,0.4)',
+            borderRadius: 8,
+            overflow: 'visible',
+            zIndex: 1
+          }}
         >
-          <img 
-            src="/giftbox.png" 
-            alt="Present" 
-            style={{ width: '280px', filter: 'drop-shadow(0px 10px 15px rgba(212, 175, 55, 0.4))' }} 
-            draggable={false}
-          />
+          {/* Internal shadow visible only when open */}
+          <div style={{ position: 'absolute', top: -10, left: 10, right: 10, height: 30, background: 'rgba(0,0,0,0.15)', borderRadius: '50%', opacity: opened ? 1 : 0, transition: '1s' }} />
+
+          {/* Vertical Ribbon */}
+          <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', width: 40, height: '100%', background: 'linear-gradient(to right, #D4AF37, #F3E5AB, #D4AF37)', boxShadow: '0 0 10px rgba(0,0,0,0.1)' }} />
+          
+          {/* Floating sparkles shooting from inside the box when opened */}
+          <AnimateSparkles active={opened} />
         </motion.div>
 
-        {/* The Pullable Ribbon */}
-        {!opened && (
-          <div style={{ 
-            position: 'absolute', 
-            bottom: '15%', 
-            zIndex: 20,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center'
-          }}>
-            <motion.div
-              drag="y"
-              dragConstraints={{ top: 0, bottom: 0 }} // Free drag tracking
-              onDragEnd={handleDragEnd}
-              animate={ribbonControls}
-              whileTap={{ cursor: 'grabbing' }}
-              style={{
-                width: '40px',
-                height: '90px',
-                cursor: 'grab',
-                touchAction: 'none', // Crucial for mobile dragging
-                position: 'relative'
-              }}
-            >
-              {/* SVG Ribbon piece for crisp UI and drop-shadow support */}
-              <svg width="40" height="90" viewBox="0 0 40 90" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ position: 'absolute', top: 0, left: 0, filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.5))'}}>
-                <path d="M0 0H40V90L20 70L0 90V0Z" fill="url(#paint0_linear)"/>
-                <defs>
-                  <linearGradient id="paint0_linear" x1="20" y1="0" x2="20" y2="90" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#F5D061"/>
-                    <stop offset="1" stopColor="#B8860B"/>
-                  </linearGradient>
-                </defs>
-              </svg>
-
-              <motion.span 
-                animate={{ y: [0, 5, 0] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-                style={{ 
-                  position: 'absolute', 
-                  top: '25px', 
-                  left: '14px', 
-                  color: 'white', 
-                  fontSize: '1.2rem', 
-                  textShadow: '0 1px 3px rgba(0,0,0,0.4)',
-                  pointerEvents: 'none' // Let the touch pass through to the draggable div
-                }}
-              >
-                ↓
-              </motion.span>
-            </motion.div>
+        {/* The Draggable Lid */}
+        <motion.div
+          drag={opened ? false : "y"}
+          dragConstraints={{ top: -200, bottom: 0 }}
+          onDragEnd={handleDragEnd}
+          animate={opened ? { y: -300, rotate: 25, x: 50, opacity: 0 } : lidControls}
+          transition={opened ? { duration: 1.2, ease: "easeOut" } : {}}
+          whileHover={{ scale: opened ? 1 : 1.02 }}
+          whileTap={{ cursor: 'grabbing', scale: 1.05 }}
+          style={{
+            position: 'absolute', top: -20, width: 240, height: 70,
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,240,245,0.85))',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,0.8)',
+            boxShadow: '0 12px 25px rgba(0,0,0,0.2), inset 0 2px 5px rgba(255,255,255,0.5)',
+            borderRadius: 6, zIndex: 10, cursor: opened ? 'default' : 'grab',
+            touchAction: 'none'
+          }}
+        >
+          {/* Vertical Ribbon on Lid */}
+          <div style={{ position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)', width: 40, height: '102%', background: 'linear-gradient(to right, #D4AF37, #F3E5AB, #D4AF37)' }} />
+          
+          {/* Top Bow construction using pure CSS borders */}
+          <div style={{ position: 'absolute', top: -50, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', pointerEvents: 'none' }}>
+            <div style={{ width: 55, height: 55, border: '8px solid #D4AF37', borderRadius: '50% 50% 0 50%', transform: 'rotate(-25deg) translateX(5px)', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.2)' }} />
+            <div style={{ width: 30, height: 30, background: 'radial-gradient(circle, #F3E5AB, #D4AF37)', borderRadius: '50%', zIndex: 5, boxShadow: '0 2px 5px rgba(0,0,0,0.3)' }} />
+            <div style={{ width: 55, height: 55, border: '8px solid #D4AF37', borderRadius: '50% 50% 50% 0', transform: 'rotate(25deg) translateX(-5px)', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.2)' }} />
           </div>
-        )}
 
-        {/* Floating sparkles behind lid when opened */}
-        <AnimateSparkles active={opened} />
+          {/* User Hint tag attached to bow */}
+          <motion.div 
+            animate={{ y: [0, -8, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+            style={{ position: 'absolute', top: -85, left: '50%', transform: 'translateX(-50%)', background: 'rgba(255,255,255,0.9)', padding: '6px 14px', borderRadius: 20, color: '#D4AF37', fontSize: '0.9rem', fontWeight: 600, boxShadow: '0 4px 10px rgba(0,0,0,0.15)', pointerEvents: 'none', whiteSpace: 'nowrap' }}
+          >
+            ↑ Lift Lid
+          </motion.div>
+        </motion.div>
+
       </div>
-
-      <p style={{ marginTop: '30px', opacity: 0.6, fontSize: '1rem', transition: 'opacity 0.5s' }}>
-        {!opened ? 'Pull the ribbon to open!' : 'A beautiful surprise...'}
-      </p>
     </motion.div>
   );
 }
@@ -119,24 +115,24 @@ function AnimateSparkles({ active }: { active: boolean }) {
   if (!active) return null;
   return (
     <>
-      {[...Array(15)].map((_, i) => (
+      {[...Array(20)].map((_, i) => (
         <motion.div
           key={i}
           initial={{ opacity: 0, scale: 0, x: 0, y: 0 }}
           animate={{ 
             opacity: [0, 1, 0], 
             scale: [0, 1.5, 0],
-            x: (Math.random() - 0.5) * 200,
-            y: -150 - Math.random() * 150
+            x: (Math.random() - 0.5) * 300,
+            y: -150 - Math.random() * 250
           }}
-          transition={{ duration: 1 + Math.random(), ease: 'easeOut' }}
+          transition={{ duration: 1.5 + Math.random(), ease: 'easeOut' }}
           style={{
             position: 'absolute',
-            top: '50%', left: '50%',
-            width: '10px', height: '10px',
+            top: '30%', left: '50%',
+            width: '12px', height: '12px',
             background: 'white',
             borderRadius: '50%',
-            boxShadow: '0 0 12px 3px #d4af37'
+            boxShadow: '0 0 15px 4px #d4af37'
           }}
         />
       ))}

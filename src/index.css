@@ -1,21 +1,28 @@
-@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Outfit:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap');
 
 :root {
   --pink-light: #fff0f5;
   --pink-main: #ffb6c1;
-  --pink-dark: #d87093;
   --gold: #d4af37;
-  --text-main: #4a4a4a;
+  --gold-light: #f3e5ab;
+  --text-main: #2d2d2d;
   
-  --bg-color: var(--pink-light);
+  --bg-gradient: radial-gradient(at 0% 0%, hsla(339,100%,94%,1) 0, transparent 50%), 
+                 radial-gradient(at 50% 0%, hsla(347,100%,88%,1) 0, transparent 50%), 
+                 radial-gradient(at 100% 0%, hsla(38,100%,88%,1) 0, transparent 50%);
+  --bg-fallback: #fff7f9;
   --text-color: var(--text-main);
 }
 
 .theme-winter {
-  --bg-color: #0d1b2a;
-  --text-color: #e0e1dd;
   --pink-main: #415a77;
   --gold: #778da9;
+  --gold-light: #e0e1dd;
+  --text-color: #f8f9fa;
+  --bg-gradient: radial-gradient(at 0% 0%, hsla(215,60%,15%,1) 0, transparent 50%), 
+                 radial-gradient(at 50% 100%, hsla(216,40%,25%,1) 0, transparent 50%), 
+                 radial-gradient(at 100% 0%, hsla(212,50%,10%,1) 0, transparent 50%);
+  --bg-fallback: #0a1128;
 }
 
 * {
@@ -27,14 +34,27 @@
 
 body {
   font-family: 'Outfit', sans-serif;
-  background-color: var(--bg-color);
+  background-color: var(--bg-fallback);
+  background-image: var(--bg-gradient);
+  background-size: 150% 150%;
+  background-attachment: fixed;
   color: var(--text-color);
-  transition: background-color 1s ease, color 1s ease;
-  overflow: hidden; /* Prevent scrolling, handle per stage */
+  transition: background-image 1.5s ease-in-out, background-color 1.5s ease-in-out, color 1.5s ease;
+  overflow: hidden; 
   height: 100vh;
   width: 100vw;
   margin: 0;
-  overscroll-behavior: none; /* Prevent pull to refresh */
+  overscroll-behavior: none; 
+}
+
+/* Optional soft animation for the mesh gradient */
+@keyframes bgDrift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+body {
+  animation: bgDrift 20s ease infinite;
 }
 
 #root {
@@ -58,76 +78,99 @@ body {
 }
 
 h1.elegant {
-  font-family: 'Outfit', serif;
-  font-size: 2.2rem;
+  font-size: 2.5rem;
   font-weight: 500;
   margin-bottom: 24px;
-  color: var(--text-color);
+  letter-spacing: -0.5px;
+  /* Chrome/Safari polished metal text effect */
+  background: linear-gradient(to right, var(--text-color), #7a7a7a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.05));
+}
+.theme-winter h1.elegant {
+  background: linear-gradient(to right, #ffffff, #a0b2c6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.handwriting {
-  font-family: 'Dancing Script', cursive;
-  font-size: 1.8rem;
-  line-height: 1.5;
-  text-align: left;
-}
-
+/* Glassmorphism Buttons */
 button.primary-btn {
-  background-color: var(--pink-main);
-  color: white;
-  border: none;
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: var(--text-color);
   border-radius: 30px;
   padding: 16px 32px;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-family: 'Outfit', sans-serif;
   font-weight: 500;
-  box-shadow: 0 4px 15px rgba(255, 182, 193, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
   cursor: pointer;
-  transition: transform 0.2s, background-color 0.2s;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   margin-bottom: 16px;
   width: 100%;
-  max-width: 300px;
+  max-width: 250px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
+button.primary-btn:hover {
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
 button.primary-btn:active {
-  transform: scale(0.96);
+  transform: scale(0.97);
 }
 
 .theme-winter button.primary-btn {
-  background-color: var(--gold);
-  color: #0d1b2a;
-  box-shadow: 0 4px 15px rgba(119, 141, 169, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+.theme-winter button.primary-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 select.dropdown {
-  padding: 12px;
+  padding: 14px 20px;
   border-radius: 20px;
-  border: 1px solid var(--pink-main);
-  background: white;
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   font-family: 'Outfit', sans-serif;
-  font-size: 1rem;
-  color: var(--text-main);
+  font-size: 1.1rem;
+  color: var(--text-color);
   width: 100%;
-  max-width: 200px;
+  max-width: 250px;
   text-align: center;
   appearance: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+  outline: none;
+  transition: background 0.3s;
+}
+select.dropdown:focus {
+  background: rgba(255, 255, 255, 0.6);
 }
 
-.sparkle {
+/* Snowflakes overlay for stage 5 */
+.sparkle, .snowflake {
   position: absolute;
   pointer-events: none;
 }
 
-/* Snowflake animation */
 @keyframes fall {
-  0% { transform: translateY(-10vh) translateX(0); opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { transform: translateY(110vh) translateX(20px); opacity: 0; }
+  0% { transform: translateY(-10vh) translateX(0) scale(0.8); opacity: 0; }
+  20% { opacity: 0.8; }
+  80% { opacity: 0.8; }
+  100% { transform: translateY(110vh) translateX(30px) scale(1.2); opacity: 0; }
 }
 
 .snowflake {
-  position: absolute;
   color: white;
   font-size: 1rem;
   user-select: none;
