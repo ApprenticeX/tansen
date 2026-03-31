@@ -180,6 +180,6 @@ select.dropdown:focus {
   color: white;
   font-size: 1rem;
   user-select: none;
-  animation: fall linear forwards;
+  animation: fall linear infinite;
   pointer-events: none;
 }
