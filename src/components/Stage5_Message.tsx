@@ -10,6 +10,8 @@ export default function Stage5Message({ onContinue }: Props) {
   const [visibleCount, setVisibleCount] = useState(0);
   const [fastMode, setFastMode] = useState(false);
   const [showButton, setShowButton] = useState(false);
+  // The parchment overlay fades out, completing the illusion of unfolding from the gift
+  const [parchmentVisible, setParchmentVisible] = useState(true);
 
   // Fetch message text
   useEffect(() => {
@@ -23,7 +25,7 @@ export default function Stage5Message({ onContinue }: Props) {
   useEffect(() => {
     const container = document.getElementById('snow-container');
     if (container) {
-      container.innerHTML = ''; // reset on remount
+      container.innerHTML = '';
       for (let i = 0; i < 30; i++) {
         const span = document.createElement('span');
         span.className = 'snowflake';
@@ -36,17 +38,18 @@ export default function Stage5Message({ onContinue }: Props) {
         container.appendChild(span);
       }
     }
+
+    // Fade the parchment overlay out after a short beat
+    const t = setTimeout(() => setParchmentVisible(false), 600);
+    return () => clearTimeout(t);
   }, []);
 
-  // Progressive text reveal
+  // Progressive text reveal — delayed slightly to let parchment fade first
   useEffect(() => {
     if (lines.length === 0) return;
-    
     if (visibleCount < lines.length) {
-      const ms = fastMode ? 100 : 1200;
-      const t = setTimeout(() => {
-        setVisibleCount(prev => prev + 1);
-      }, ms);
+      const ms = fastMode ? 80 : 1200;
+      const t = setTimeout(() => setVisibleCount(prev => prev + 1), ms);
       return () => clearTimeout(t);
     } else {
       setTimeout(() => setShowButton(true), 500);
@@ -54,9 +57,9 @@ export default function Stage5Message({ onContinue }: Props) {
   }, [visibleCount, lines, fastMode]);
 
   return (
-    <motion.div 
+    <motion.div
       className="stage-container"
-      initial={{ opacity: 0 }}
+      initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, x: -50 }}
       transition={{ duration: 1.5 }}
@@ -64,7 +67,27 @@ export default function Stage5Message({ onContinue }: Props) {
     >
       <div id="snow-container" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }} />
 
-      <div 
+      {/* ── Parchment overlay — the 'unfolded letter' illusion ── */}
+      <AnimatePresence>
+        {parchmentVisible && (
+          <motion.div
+            key="parchment-cover"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.9, ease: 'easeInOut' }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'linear-gradient(160deg, #1a2744 0%, #0f1b33 60%, #0a1128 100%)',
+              zIndex: 9985,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Message content */}
+      <div
         onClick={() => setFastMode(true)}
         style={{ position: 'relative', zIndex: 10, maxWidth: '500px', margin: '0 auto', width: '100%', paddingBottom: '100px', cursor: 'pointer' }}
       >
@@ -74,12 +97,12 @@ export default function Stage5Message({ onContinue }: Props) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            style={{ 
-              minHeight: line.trim() === '' ? '20px' : 'auto', 
-              fontSize: '1.2rem', 
+            style={{
+              minHeight: line.trim() === '' ? '20px' : 'auto',
+              fontSize: '1.2rem',
               lineHeight: '1.8',
               textAlign: 'left',
-              fontFamily: 'Outfit, sans-serif' // Normal font as requested
+              fontFamily: 'Outfit, sans-serif',
             }}
           >
             {line}
@@ -94,8 +117,8 @@ export default function Stage5Message({ onContinue }: Props) {
               transition={{ duration: 1 }}
               style={{ marginTop: '40px', textAlign: 'center' }}
             >
-              <button 
-                className="primary-btn" 
+              <button
+                className="primary-btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   onContinue();

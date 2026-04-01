@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import AudioPlayer from './components/AudioPlayer';
 import Stage1Age from './components/Stage1_Age';
@@ -12,9 +12,10 @@ function App() {
   const [stage, setStage] = useState(1);
   const [maxStageReached, setMaxStageReached] = useState(1);
   const [age, setAge] = useState(26);
+  const advancingFromRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (stage === 5) {
+    if (stage === 5 || stage === 6) {
       document.body.classList.add('theme-winter');
     } else {
       document.body.classList.remove('theme-winter');
@@ -25,11 +26,18 @@ function App() {
     }
   }, [stage, maxStageReached]);
 
-  const advanceStage = () => setStage(s => {
-    const next = s + 1;
-    if (next > maxStageReached) setMaxStageReached(next);
-    return next;
-  });
+  const advanceStage = useCallback(() => {
+    setStage(current => {
+      // Guard: only allow advancing exactly +1, and block duplicate calls from the same stage
+      if (advancingFromRef.current === current) return current; // already advancing from this stage
+      advancingFromRef.current = current;
+      const next = Math.min(current + 1, 6);
+      if (next > maxStageReached) setMaxStageReached(next);
+      // Reset the guard after the transition settles
+      setTimeout(() => { advancingFromRef.current = null; }, 500);
+      return next;
+    });
+  }, [maxStageReached]);
 
   const jumpToStage = (targetStage: number) => {
     if (targetStage <= maxStageReached) {
@@ -59,7 +67,7 @@ function App() {
                width: '10px', 
                height: '10px', 
                borderRadius: '50%',
-               backgroundColor: stage === s ? (stage === 5 ? '#fff' : 'var(--pink-main)') : 'rgba(100,100,100,0.3)',
+               backgroundColor: stage === s ? ((stage === 5 || stage === 6) ? '#fff' : 'var(--pink-main)') : 'rgba(100,100,100,0.3)',
                cursor: s <= maxStageReached ? 'pointer' : 'default',
                transition: 'background-color 0.3s'
              }}
