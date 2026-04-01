@@ -26,7 +26,17 @@ export default function Stage4Present({ onOpen }: Props) {
     // Lid flies off ~800ms → letter rises → ~900ms later letter expands → call onOpen
     const t1 = setTimeout(() => setLetterPhase('rising'), 900);
     const t2 = setTimeout(() => setLetterPhase('expanding'), 1900);
-    const t3 = setTimeout(() => onOpen(), 2700);
+    const t3 = setTimeout(() => {
+      // ── Persistent DOM cover to perfectly bridge the unmount/mount gap ──
+      const cover = document.createElement('div');
+      cover.id = 'transition-cover';
+      cover.style.position = 'fixed';
+      cover.style.inset = '0';
+      cover.style.background = 'linear-gradient(160deg, #1a2744 0%, #0f1b33 60%, #0a1128 100%)';
+      cover.style.zIndex = '99999';
+      document.body.appendChild(cover);
+      onOpen();
+    }, 2500);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened]);
@@ -136,37 +146,46 @@ export default function Stage4Present({ onOpen }: Props) {
             }}
             initial={{ scale: 0, y: 120, opacity: 0, rotate: -5 }}
             animate={
-              letterPhase === 'rising'
-                ? { scale: 1, y: -110, opacity: 1, rotate: 0, borderRadius: 10 }
-                : { scale: 30, y: 0, opacity: 1, rotate: 0, borderRadius: 0 }
+              letterPhase === 'expanding'
+                ? { scale: 1.5, y: -110, opacity: 0, rotate: 0 } // Letter fades into the background overlay
+                : { scale: 1, y: -110, opacity: 1, rotate: 0 }
             }
-            transition={
-              letterPhase === 'rising'
-                ? { duration: 0.7, ease: [0.22, 1, 0.36, 1] }
-                : { duration: 0.6, ease: [0.4, 0, 0.2, 1] }
-            }
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
             {/* Fold lines on letter */}
-            {letterPhase === 'rising' && (
-              <>
-                <div style={{ position: 'absolute', top: '34%', left: '8%', right: '8%', height: '1px', background: 'rgba(100,140,200,0.2)' }} />
-                <div style={{ position: 'absolute', top: '58%', left: '8%', right: '8%', height: '1px', background: 'rgba(100,140,200,0.2)' }} />
-                {/* Wax seal */}
-                <div style={{
-                  width: 26, height: 26,
-                  borderRadius: '50%',
-                  background: 'radial-gradient(circle at 35% 35%, #5a7fbf, #3a5a9a)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.7rem',
-                  color: 'rgba(255,255,255,0.85)',
-                  fontWeight: 700,
-                }}>
-                  ❄
-                </div>
-              </>
-            )}
+            <div style={{ position: 'absolute', top: '34%', left: '8%', right: '8%', height: '1px', background: 'rgba(100,140,200,0.2)' }} />
+            <div style={{ position: 'absolute', top: '58%', left: '8%', right: '8%', height: '1px', background: 'rgba(100,140,200,0.2)' }} />
+            {/* Wax seal */}
+            <div style={{
+              width: 26, height: 26,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle at 35% 35%, #5a7fbf, #3a5a9a)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '0.7rem',
+              color: 'rgba(255,255,255,0.85)',
+              fontWeight: 700,
+            }}>
+              ❄
+            </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* ── Fullscreen Overlay (Avoids 40x Scale GPU glitch) ── */}
+      <AnimatePresence>
+        {letterPhase === 'expanding' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'linear-gradient(160deg, #1a2744 0%, #0f1b33 60%, #0a1128 100%)',
+              zIndex: 9980,
+            }}
+          />
         )}
       </AnimatePresence>
     </motion.div>

@@ -10,8 +10,6 @@ export default function Stage5Message({ onContinue }: Props) {
   const [visibleCount, setVisibleCount] = useState(0);
   const [fastMode, setFastMode] = useState(false);
   const [showButton, setShowButton] = useState(false);
-  // The parchment overlay fades out, completing the illusion of unfolding from the gift
-  const [parchmentVisible, setParchmentVisible] = useState(true);
 
   // Fetch message text
   useEffect(() => {
@@ -39,9 +37,16 @@ export default function Stage5Message({ onContinue }: Props) {
       }
     }
 
-    // Fade the parchment overlay out after a short beat
-    const t = setTimeout(() => setParchmentVisible(false), 600);
-    return () => clearTimeout(t);
+    // Smoothly fade out the persistent transition cover (if it exists)
+    const cover = document.getElementById('transition-cover');
+    if (cover) {
+      const anim = cover.animate([{ opacity: 1 }, { opacity: 0 }], {
+        duration: 900,
+        easing: 'ease-in-out',
+        fill: 'forwards'
+      });
+      anim.onfinish = () => cover.remove();
+    }
   }, []);
 
   // Progressive text reveal — delayed slightly to let parchment fade first
@@ -66,25 +71,6 @@ export default function Stage5Message({ onContinue }: Props) {
       style={{ overflowY: 'auto', justifyContent: 'flex-start', paddingTop: '15vh', alignItems: 'flex-start' }}
     >
       <div id="snow-container" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }} />
-
-      {/* ── Parchment overlay — the 'unfolded letter' illusion ── */}
-      <AnimatePresence>
-        {parchmentVisible && (
-          <motion.div
-            key="parchment-cover"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.9, ease: 'easeInOut' }}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'linear-gradient(160deg, #1a2744 0%, #0f1b33 60%, #0a1128 100%)',
-              zIndex: 9985,
-              pointerEvents: 'none',
-            }}
-          />
-        )}
-      </AnimatePresence>
 
       {/* Message content */}
       <div
