@@ -309,15 +309,20 @@ export default function Stage6Gallery() {
             >
               {item.type === 'image' ? (
                 /* ── Image Card ── */
-                <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                <div 
+                  style={{ position: 'relative', width: '100%', height: '100%' }}
+                  onContextMenu={(e) => e.preventDefault()}
+                >
                   <motion.img
                     src={item.blobUrl}
                     alt={`Memory locked`}
+                    onDragStart={(e) => e.preventDefault()}
                     style={{
                       width: '100%',
                       height: '100%',
                       objectFit: 'cover',
                       display: 'block',
+                      pointerEvents: 'none',
                       WebkitTouchCallout: 'none',
                       WebkitUserSelect: 'none',
                       userSelect: 'none',
