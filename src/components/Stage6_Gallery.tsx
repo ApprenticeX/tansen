@@ -43,7 +43,7 @@ export default function Stage6Gallery() {
 
       // ── Auto-discover numbered image pairs: 1.enc/1.txt, 2.enc/2.txt, ...
       let n = 1;
-      const MAX = 50;
+      const MAX = 20;
       while (n <= MAX) {
         try {
           const imgRes = await fetch(`/pictures/${n}.enc`);
@@ -269,6 +269,9 @@ export default function Stage6Gallery() {
                       height: '100%',
                       objectFit: 'cover',
                       display: 'block',
+                      WebkitTouchCallout: 'none',
+                      WebkitUserSelect: 'none',
+                      userSelect: 'none',
                     }}
                   />
                   {/* subtle bottom vignette */}
@@ -394,6 +397,9 @@ export default function Stage6Gallery() {
                     objectFit: 'contain',
                     borderRadius: '14px',
                     boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                    WebkitTouchCallout: 'none',
+                    WebkitUserSelect: 'none',
+                    userSelect: 'none',
                   }}
                 />
               ) : (
