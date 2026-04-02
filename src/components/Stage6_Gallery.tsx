@@ -544,7 +544,7 @@ export default function Stage6Gallery() {
             <div style={{
               color: 'white',
               textAlign: 'center',
-              padding: '16px 20px 24px',
+              padding: '16px 20px 60px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -653,7 +653,7 @@ export default function Stage6Gallery() {
                     fontWeight: 300,
                     margin: 0
                   }}>
-                    You can't just download it like that... I want to see you too. Send me your photo first to download me.
+                    You can't just download it like that😂... I want to see you🌸 too. Send me your photo first to download me❄️.
                   </p>
                   
                   <div style={{ position: 'relative', marginTop: '10px' }}>
