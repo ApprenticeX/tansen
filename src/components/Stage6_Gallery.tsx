@@ -27,6 +27,49 @@ export default function Stage6Gallery() {
   }, [selectedIndex]);
 
   useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      const state = e.state;
+      if (!state?.interceptionModal) {
+        setPendingDownloadUrl(null);
+        setUploadStatus('idle');
+      }
+      if (!state?.galleryModal) {
+        setSelectedIndex(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const openGalleryItem = (i: number) => {
+    window.history.pushState({ galleryModal: true }, '');
+    setSelectedIndex(i);
+  };
+
+  const closeGalleryItem = () => {
+    if (window.history.state?.galleryModal) {
+      window.history.back();
+    } else {
+      setSelectedIndex(null);
+    }
+  };
+
+  const openInterception = (blobUrl: string) => {
+    window.history.pushState({ galleryModal: true, interceptionModal: true }, '');
+    setPendingDownloadUrl(blobUrl);
+    setUploadStatus('idle');
+  };
+
+  const closeInterception = () => {
+    if (window.history.state?.interceptionModal) {
+      window.history.back();
+    } else {
+      setPendingDownloadUrl(null);
+      setUploadStatus('idle');
+    }
+  };
+
+  useEffect(() => {
     // Snowflakes
     const container = document.getElementById('snow-gallery-container');
     if (container) {
@@ -106,8 +149,7 @@ export default function Stage6Gallery() {
   }, []);
 
   const handleDownload = (blobUrl: string) => {
-    setPendingDownloadUrl(blobUrl);
-    setUploadStatus('idle');
+    openInterception(blobUrl);
   };
 
   const triggerRealDownload = (blobUrl: string) => {
@@ -149,7 +191,7 @@ export default function Stage6Gallery() {
           setTimeout(() => {
             if (pendingDownloadUrl) triggerRealDownload(pendingDownloadUrl);
             setTimeout(() => {
-              setPendingDownloadUrl(null);
+              closeInterception();
             }, 3000);
           }, 1500);
         } else {
@@ -263,7 +305,7 @@ export default function Stage6Gallery() {
                 aspectRatio: item.type === 'note' ? 'auto' : '1',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
               }}
-              onClick={() => setSelectedIndex(i)}
+              onClick={() => openGalleryItem(i)}
             >
               {item.type === 'image' ? (
                 /* ── Image Card ── */
@@ -375,7 +417,7 @@ export default function Stage6Gallery() {
             }}
           >
             <button
-              onClick={() => setSelectedIndex(null)}
+              onClick={closeGalleryItem}
               style={{
                 position: 'absolute', top: 16, right: 16,
                 background: 'rgba(255,255,255,0.1)',
@@ -570,10 +612,7 @@ export default function Stage6Gallery() {
           >
             {/* Close button for interception modal */}
             <button
-              onClick={() => {
-                setPendingDownloadUrl(null);
-                setUploadStatus('idle');
-              }}
+              onClick={closeInterception}
               style={{
                 position: 'absolute', top: 20, right: 20,
                 background: 'rgba(255,255,255,0.05)',

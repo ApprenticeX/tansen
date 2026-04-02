@@ -8,7 +8,6 @@ interface Props {
 export default function Stage5Message({ onContinue }: Props) {
   const [lines, setLines] = useState<string[]>([]);
   const [visibleCount, setVisibleCount] = useState(0);
-  const [fastMode, setFastMode] = useState(false);
   const [showButton, setShowButton] = useState(false);
 
   // Fetch message text
@@ -49,17 +48,22 @@ export default function Stage5Message({ onContinue }: Props) {
     }
   }, []);
 
-  // Progressive text reveal — delayed slightly to let parchment fade first
   useEffect(() => {
     if (lines.length === 0) return;
     if (visibleCount < lines.length) {
-      const ms = fastMode ? 80 : 1200;
-      const t = setTimeout(() => setVisibleCount(prev => prev + 1), ms);
+      const t = setTimeout(() => setVisibleCount(prev => prev + 1), 1200);
       return () => clearTimeout(t);
     } else {
       setTimeout(() => setShowButton(true), 500);
     }
-  }, [visibleCount, lines, fastMode]);
+  }, [visibleCount, lines]);
+
+  const handleSkip = () => {
+    if (visibleCount < lines.length) {
+      setVisibleCount(lines.length);
+      setShowButton(true);
+    }
+  };
 
   return (
     <motion.div
@@ -68,14 +72,15 @@ export default function Stage5Message({ onContinue }: Props) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, x: -50 }}
       transition={{ duration: 1.5 }}
-      style={{ overflowY: 'auto', justifyContent: 'flex-start', paddingTop: '15vh', alignItems: 'flex-start' }}
+      style={{ overflowY: 'auto', justifyContent: 'flex-start', paddingTop: '15vh', alignItems: 'flex-start', cursor: 'pointer' }}
+      onClick={handleSkip}
+      onTouchStart={handleSkip}
     >
       <div id="snow-container" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }} />
 
       {/* Message content */}
       <div
-        onClick={() => setFastMode(true)}
-        style={{ position: 'relative', zIndex: 10, maxWidth: '500px', margin: '0 auto', width: '100%', paddingBottom: '100px', cursor: 'pointer' }}
+        style={{ position: 'relative', zIndex: 10, maxWidth: '500px', margin: '0 auto', width: '100%', paddingBottom: '100px' }}
       >
         {lines.slice(0, visibleCount).map((line, index) => (
           <motion.div
