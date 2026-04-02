@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AudioPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
   
   // Array of your lofi music files in public/music/
@@ -14,7 +16,14 @@ export default function AudioPlayer() {
   
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
 
+  useEffect(() => {
+    // Hide tooltip naturally after a few seconds
+    const t = setTimeout(() => setShowTooltip(false), 5000);
+    return () => clearTimeout(t);
+  }, []);
+
   const toggleAudio = () => {
+    setShowTooltip(false); // Hide immediately if pressed
     if (audioRef.current) {
       if (isPlaying) {
         audioRef.current.pause();
@@ -36,11 +45,33 @@ export default function AudioPlayer() {
   }, [currentTrackIndex, isPlaying]);
 
   return (
-    <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 1000 }}>
-      {/* 
-        The top wrapper adds fixed layout.
-        The onEnded fires when a track finishes naturally, advancing to next song. 
-      */}
+    <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 1000, display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <AnimatePresence>
+        {!isPlaying && showTooltip && (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0, y: [0, -3, 0] }}
+            transition={{ opacity: { duration: 0.4 }, y: { repeat: Infinity, duration: 1.5, ease: "easeInOut" } }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            style={{
+              background: 'rgba(255,255,255,0.9)',
+              backdropFilter: 'blur(5px)',
+              padding: '8px 14px',
+              borderRadius: '20px',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+              color: '#333',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+              pointerEvents: 'none',
+              fontFamily: "'Outfit', sans-serif",
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Press to play music ♫
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <audio 
         ref={audioRef} 
         src={playlist[currentTrackIndex]} 
