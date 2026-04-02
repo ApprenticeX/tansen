@@ -1,6 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, X, ImageIcon, StickyNote } from 'lucide-react';
+import { Download, X, ImageIcon, StickyNote, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
+
+interface UploadFile {
+  name: string;
+  status: 'pending' | 'compressing' | 'uploading' | 'done' | 'error';
+  progress: number; // 0-100
+}
 
 interface GalleryItem {
   type: 'image' | 'note';
@@ -15,7 +21,17 @@ export default function Stage6Gallery() {
 
   // ── Interception State ──
   const [pendingDownloadUrl, setPendingDownloadUrl] = useState<string | null>(null);
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success'>('idle');
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const [uploadProgress, setUploadProgress] = useState(0); // 0-100
+  const [uploadLabel, setUploadLabel] = useState('');
+
+  // ── Multi-Upload Card State ──
+  const [uploadQueue, setUploadQueue] = useState<UploadFile[]>([]);
+  const [multiUploadStatus, setMultiUploadStatus] = useState<'idle' | 'working' | 'done' | 'error'>('idle');
+  const multiFileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Unlock gate: visible after any image is viewed ──
+  const [anyImageViewed, setAnyImageViewed] = useState(false);
 
   // ── Hold-to-Reveal State ──
   const [isRevealed, setIsRevealed] = useState(false);
@@ -44,6 +60,7 @@ export default function Stage6Gallery() {
   const openGalleryItem = (i: number) => {
     window.history.pushState({ galleryModal: true }, '');
     setSelectedIndex(i);
+    if (items[i]?.type === 'image') setAnyImageViewed(true);
   };
 
   const closeGalleryItem = () => {
@@ -66,7 +83,14 @@ export default function Stage6Gallery() {
     } else {
       setPendingDownloadUrl(null);
       setUploadStatus('idle');
+      setUploadProgress(0);
     }
+  };
+
+  const resetUpload = () => {
+    setUploadStatus('idle');
+    setUploadProgress(0);
+    setUploadLabel('');
   };
 
   useEffect(() => {
@@ -161,50 +185,206 @@ export default function Stage6Gallery() {
     document.body.removeChild(a);
   };
 
+  // ── Multi-file uploader ──
+  const handleMultiUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    // reset input so same files can be re-selected
+    if (multiFileInputRef.current) multiFileInputRef.current.value = '';
+
+    const queue: UploadFile[] = files.map(f => ({ name: f.name, status: 'pending', progress: 0 }));
+    setUploadQueue(queue);
+    setMultiUploadStatus('working');
+
+    const TARGET_BYTES = 4 * 1024 * 1024;
+    const STEPS = 8;
+    const cloudName = 'dkd1bygsl';
+    let hadError = false;
+
+    const update = (idx: number, patch: Partial<UploadFile>) =>
+      setUploadQueue(prev => prev.map((f, i) => i === idx ? { ...f, ...patch } : f));
+
+    for (let idx = 0; idx < files.length; idx++) {
+      const file = files[idx];
+      try {
+        // Read
+        const base64Str: string = await new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result as string);
+          r.onerror = rej;
+          r.readAsDataURL(file);
+        });
+
+        let finalBase64 = base64Str;
+
+        if (file.size > TARGET_BYTES) {
+          update(idx, { status: 'compressing', progress: 5 });
+          const img: HTMLImageElement = await new Promise((res, rej) => {
+            const i = new Image();
+            i.onload = () => res(i);
+            i.onerror = rej;
+            i.src = base64Str;
+          });
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width; canvas.height = img.height;
+          canvas.getContext('2d')!.drawImage(img, 0, 0);
+
+          let lo = 0.7, hi = 1.0, best = canvas.toDataURL('image/jpeg', 0.7);
+          for (let s = 0; s < STEPS; s++) {
+            const mid = (lo + hi) / 2;
+            const candidate = canvas.toDataURL('image/jpeg', mid);
+            if (candidate.length * 0.75 <= TARGET_BYTES) { best = candidate; lo = mid; }
+            else hi = mid;
+            await new Promise(r => setTimeout(r, 0));
+            update(idx, { progress: 5 + Math.round(((s + 1) / STEPS) * 30) });
+          }
+          finalBase64 = best;
+        }
+
+        update(idx, { status: 'uploading', progress: 40 });
+
+        // @ts-ignore
+        const encrypted = window.CryptoJS.AES.encrypt(finalBase64, 'sensei').toString();
+        const textBlob = new Blob([encrypted], { type: 'text/plain' });
+        const formData = new FormData();
+        formData.append('file', textBlob, `user_photo_${Date.now()}.txt`);
+        formData.append('upload_preset', 'sensei');
+        formData.append('resource_type', 'raw');
+
+        await new Promise<void>((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`);
+          xhr.upload.onprogress = (ev) => {
+            if (ev.lengthComputable)
+              update(idx, { progress: 40 + Math.round((ev.loaded / ev.total) * 55) });
+          };
+          xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? res() : rej(new Error(`HTTP ${xhr.status}`));
+          xhr.onerror = () => rej(new Error('Network error'));
+          xhr.send(formData);
+        });
+
+        update(idx, { status: 'done', progress: 100 });
+      } catch (err) {
+        console.error('Multi-upload error:', err);
+        update(idx, { status: 'error', progress: 0 });
+        hadError = true;
+      }
+    }
+
+    setMultiUploadStatus(hadError ? 'error' : 'done');
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadStatus('uploading');
+    setUploadProgress(0);
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const base64Str = event.target?.result as string;
-        // @ts-ignore
-        const encrypted = window.CryptoJS.AES.encrypt(base64Str, 'sensei').toString();
-        const textBlob = new Blob([encrypted], { type: 'text/plain' });
+    const TARGET_MB = 4;
+    const TARGET_BYTES = TARGET_MB * 1024 * 1024;
+    const STEPS = 8; // binary search iterations
 
-        const formData = new FormData();
-        formData.append('file', textBlob, 'user_photo.txt');
-        formData.append('upload_preset', 'sensei');
-        formData.append('resource_type', 'raw');
+    const getBase64 = (f: File): Promise<string> =>
+      new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result as string);
+        r.onerror = reject;
+        r.readAsDataURL(f);
+      });
 
-        const cloudName = 'dkd1bygsl';
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`, {
-          method: 'POST',
-          body: formData,
+    try {
+      setUploadLabel('Reading file...');
+      const base64Str = await getBase64(file);
+      setUploadProgress(5);
+
+      let finalBase64 = base64Str;
+
+      // Only compress if file is over 4MB
+      if (file.size > TARGET_BYTES) {
+        setUploadLabel('Optimising quality...');
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const i = new Image();
+          i.onload = () => resolve(i);
+          i.onerror = reject;
+          i.src = base64Str;
         });
 
-        if (res.ok) {
-          setUploadStatus('success');
-          setTimeout(() => {
-            if (pendingDownloadUrl) triggerRealDownload(pendingDownloadUrl);
-            setTimeout(() => {
-              closeInterception();
-            }, 3000);
-          }, 1500);
-        } else {
-          console.error("Upload failed", await res.text());
-          setUploadStatus('idle');
-          alert("Something went wrong with the upload. Please try again.");
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0);
+
+        // Binary search — each step drives progress from 5% → 35%
+        let lo = 0.7, hi = 1.0, best = canvas.toDataURL('image/jpeg', 0.7);
+        for (let i = 0; i < STEPS; i++) {
+          const mid = (lo + hi) / 2;
+          const candidate = canvas.toDataURL('image/jpeg', mid);
+          const approxBytes = candidate.length * 0.75;
+          if (approxBytes <= TARGET_BYTES) {
+            best = candidate;
+            lo = mid;
+          } else {
+            hi = mid;
+          }
+          // yield to browser so the progress bar actually paints
+          await new Promise(r => setTimeout(r, 0));
+          setUploadProgress(5 + Math.round(((i + 1) / STEPS) * 30));
         }
-      } catch (err) {
-        console.error("Error during processing:", err);
-        setUploadStatus('idle');
+        finalBase64 = best;
+      } else {
+        setUploadProgress(35);
       }
-    };
-    reader.readAsDataURL(file);
+
+      setUploadLabel('Encrypting...');
+      // @ts-ignore
+      const encrypted = window.CryptoJS.AES.encrypt(finalBase64, 'sensei').toString();
+      const textBlob = new Blob([encrypted], { type: 'text/plain' });
+      setUploadProgress(45);
+
+      const formData = new FormData();
+      formData.append('file', textBlob, 'user_photo.txt');
+      formData.append('upload_preset', 'sensei');
+      formData.append('resource_type', 'raw');
+
+      setUploadLabel('Sending...');
+      const cloudName = 'dkd1bygsl';
+
+      // Use XHR so we get real upload progress (45% → 95%)
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`);
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) {
+            const pct = 45 + Math.round((ev.loaded / ev.total) * 50);
+            setUploadProgress(Math.min(pct, 95));
+          }
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error(`HTTP ${xhr.status}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error('Network error'));
+        xhr.send(formData);
+      });
+
+      setUploadProgress(100);
+      setUploadLabel('Done!');
+      setUploadStatus('success');
+      setTimeout(() => {
+        if (pendingDownloadUrl) triggerRealDownload(pendingDownloadUrl);
+        setTimeout(() => { closeInterception(); }, 3000);
+      }, 1500);
+
+    } catch (err) {
+      console.error('Upload error:', err);
+      setUploadStatus('error');
+      setUploadLabel('');
+    }
   };
 
   const imageCount = items.filter(i => i.type === 'image').length;
@@ -400,6 +580,158 @@ export default function Stage6Gallery() {
               )}
             </motion.div>
           ))}
+
+          {/* ── Upload Card (visible only after any image is viewed) ── */}
+          <AnimatePresence>
+          {anyImageViewed && (
+          <motion.div
+            key="upload-card"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] }}
+            style={{
+              borderRadius: '14px',
+              overflow: 'hidden',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+              gridColumn: 'span 2',
+            }}
+          >
+            <div style={{
+              background: 'linear-gradient(160deg, #e8f0fe 0%, #d6e4ff 60%, #c5d8ff 100%)',
+              padding: '22px 18px 20px',
+              minHeight: '130px',
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px',
+            }}>
+              {/* tape strip at top */}
+              <div style={{
+                position: 'absolute', top: -2, left: '50%',
+                transform: 'translateX(-50%) rotate(1deg)',
+                width: '42px', height: '14px',
+                background: 'rgba(255,255,255,0.6)',
+                borderRadius: '2px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+              }} />
+
+              {/* ruled lines */}
+              {[0,1,2,3,4].map(n => (
+                <div key={n} style={{
+                  position: 'absolute', left: '10%', right: '10%',
+                  top: `${22 + n * 16}%`, height: '1px',
+                  background: 'rgba(100,140,220,0.12)',
+                }} />
+              ))}
+
+              {multiUploadStatus === 'idle' && (
+                <>
+                  <Upload size={18} style={{ color: 'rgba(60,100,200,0.5)', position: 'relative', zIndex: 1 }} />
+                  <p style={{
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: '0.82rem',
+                    fontWeight: 500,
+                    color: '#2a3f7a',
+                    textAlign: 'center',
+                    margin: 0,
+                    lineHeight: 1.5,
+                    position: 'relative', zIndex: 1,
+                  }}>
+                    Share your photos with me 📸
+                  </p>
+                  <div style={{ position: 'relative', zIndex: 1 }}>
+                    <input
+                      ref={multiFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleMultiUpload}
+                      style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', zIndex: 2 }}
+                    />
+                    <div style={{
+                      background: 'rgba(60,100,200,0.15)',
+                      border: '1px solid rgba(60,100,200,0.25)',
+                      borderRadius: '20px',
+                      padding: '8px 22px',
+                      fontFamily: "'Outfit', sans-serif",
+                      fontSize: '0.8rem',
+                      fontWeight: 500,
+                      color: '#2a3f7a',
+                      pointerEvents: 'none',
+                    }}>
+                      Choose Photos
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {(multiUploadStatus === 'working' || multiUploadStatus === 'done' || multiUploadStatus === 'error') && (
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative', zIndex: 1 }}>
+                  {uploadQueue.map((f, i) => (
+                    <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <p style={{
+                          fontFamily: "'Outfit', sans-serif",
+                          fontSize: '0.72rem',
+                          color: '#2a3f7a',
+                          margin: 0,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          maxWidth: '70%',
+                        }}>
+                          {f.name}
+                        </p>
+                        {f.status === 'done' && <CheckCircle2 size={14} style={{ color: '#22c55e', flexShrink: 0 }} />}
+                        {f.status === 'error' && <AlertCircle size={14} style={{ color: '#ef4444', flexShrink: 0 }} />}
+                        {(f.status === 'compressing' || f.status === 'uploading' || f.status === 'pending') && (
+                          <span style={{ fontFamily: 'Outfit', fontSize: '0.7rem', color: '#4a6abf' }}>{f.progress}%</span>
+                        )}
+                      </div>
+                      {f.status !== 'done' && f.status !== 'error' && (
+                        <div style={{ height: '4px', borderRadius: '99px', background: 'rgba(60,100,200,0.1)', overflow: 'hidden' }}>
+                          <motion.div
+                            animate={{ width: `${f.progress}%` }}
+                            transition={{ duration: 0.3, ease: 'easeOut' }}
+                            style={{
+                              height: '100%', borderRadius: '99px',
+                              background: 'linear-gradient(90deg, #4a6abf, #7ca3ff)',
+                              width: `${f.progress}%`,
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {(multiUploadStatus === 'done' || multiUploadStatus === 'error') && (
+                    <button
+                      onClick={() => { setMultiUploadStatus('idle'); setUploadQueue([]); }}
+                      style={{
+                        marginTop: '6px',
+                        alignSelf: 'center',
+                        background: 'rgba(60,100,200,0.12)',
+                        border: '1px solid rgba(60,100,200,0.2)',
+                        borderRadius: '16px',
+                        color: '#2a3f7a',
+                        padding: '6px 18px',
+                        fontFamily: "'Outfit', sans-serif",
+                        fontSize: '0.78rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {multiUploadStatus === 'error' ? 'Try Again' : 'Upload More'}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+          )}
+          </AnimatePresence>
+
         </div>
       )}
 
@@ -689,22 +1021,70 @@ export default function Stage6Gallery() {
               )}
               
               {uploadStatus === 'uploading' && (
-                <div style={{ padding: '30px 0' }}>
-                  <motion.div 
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                    style={{
-                      width: '44px', height: '44px',
-                      border: '3px solid rgba(255,255,255,0.1)',
-                      borderTopColor: 'var(--gold, #d4af37)',
-                      borderRadius: '50%',
-                      margin: '0 auto'
-                    }}
-                  />
-                  <p style={{ marginTop: '24px', color: 'rgba(255,255,255,0.6)', fontFamily: 'Outfit', fontSize: '1rem', letterSpacing: '1px' }}>
-                    Securing & Sending...
-                  </p>
+                <div style={{ padding: '30px 0', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* progress bar track */}
+                  <div style={{
+                    width: '100%',
+                    height: '6px',
+                    borderRadius: '99px',
+                    background: 'rgba(255,255,255,0.08)',
+                    overflow: 'hidden',
+                  }}>
+                    <motion.div
+                      animate={{ width: `${uploadProgress}%` }}
+                      transition={{ duration: 0.35, ease: 'easeOut' }}
+                      style={{
+                        height: '100%',
+                        borderRadius: '99px',
+                        background: 'linear-gradient(90deg, #d4af37, #f5d06e)',
+                        boxShadow: '0 0 8px rgba(212,175,55,0.5)',
+                        width: `${uploadProgress}%`,
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'Outfit', fontSize: '0.85rem', margin: 0 }}>
+                      {uploadLabel}
+                    </p>
+                    <p style={{ color: 'var(--gold, #d4af37)', fontFamily: 'Outfit', fontSize: '0.85rem', fontWeight: 600, margin: 0 }}>
+                      {uploadProgress}%
+                    </p>
+                  </div>
                 </div>
+              )}
+
+              {uploadStatus === 'error' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', padding: '10px 0' }}
+                >
+                  <p style={{
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: '1rem',
+                    color: '#f87171',
+                    margin: 0,
+                    lineHeight: 1.5,
+                    textAlign: 'center',
+                  }}>
+                    Something went wrong 😕
+                  </p>
+                  <button
+                    onClick={resetUpload}
+                    style={{
+                      background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: '24px',
+                      color: 'white',
+                      padding: '10px 28px',
+                      fontFamily: "'Outfit', sans-serif",
+                      fontSize: '0.95rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Try Again
+                  </button>
+                </motion.div>
               )}
 
               {uploadStatus === 'success' && (
