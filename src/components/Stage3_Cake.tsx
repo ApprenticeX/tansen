@@ -295,7 +295,12 @@ export default function Stage3Cake({ onCut }: Props) {
     }
   };
 
+  const hasFinishedRef = useRef(false);
+
   const finishCut = () => {
+    if (hasFinishedRef.current) return;
+    hasFinishedRef.current = true;
+
     setCutComplete(true);
     setIsSwiping(false);
     setKnifePos(null);

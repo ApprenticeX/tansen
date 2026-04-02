@@ -51,7 +51,7 @@ export default function Stage5Message({ onContinue }: Props) {
   useEffect(() => {
     if (lines.length === 0) return;
     if (visibleCount < lines.length) {
-      const t = setTimeout(() => setVisibleCount(prev => prev + 1), 1200);
+      const t = setTimeout(() => setVisibleCount(prev => prev + 1), 800);
       return () => clearTimeout(t);
     } else {
       setTimeout(() => setShowButton(true), 500);
@@ -98,7 +98,7 @@ export default function Stage5Message({ onContinue }: Props) {
               fontStyle: line.includes('-- best wishes') ? 'italic' : 'normal',
             }}
           >
-            {line}
+            {line.replace('Your Apprentice', 'Your\u00A0Apprentice')}
           </motion.div>
         ))}
 
