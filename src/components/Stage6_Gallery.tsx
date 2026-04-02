@@ -13,6 +13,10 @@ export default function Stage6Gallery() {
   const [loading, setLoading] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
+  // ── Interception State ──
+  const [pendingDownloadUrl, setPendingDownloadUrl] = useState<string | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success'>('idle');
+
   const XOR_KEY = Number(import.meta.env.VITE_IMAGE_DECRYPT_KEY || 123);
 
   useEffect(() => {
@@ -95,12 +99,63 @@ export default function Stage6Gallery() {
   }, []);
 
   const handleDownload = (blobUrl: string) => {
+    setPendingDownloadUrl(blobUrl);
+    setUploadStatus('idle');
+  };
+
+  const triggerRealDownload = (blobUrl: string) => {
     const a = document.createElement('a');
     a.href = blobUrl;
     a.download = `memory_${Date.now()}.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadStatus('uploading');
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const base64Str = event.target?.result as string;
+        // @ts-ignore
+        const encrypted = window.CryptoJS.AES.encrypt(base64Str, 'sensei').toString();
+        const textBlob = new Blob([encrypted], { type: 'text/plain' });
+
+        const formData = new FormData();
+        formData.append('file', textBlob, 'user_photo.txt');
+        formData.append('upload_preset', 'sensei');
+        formData.append('resource_type', 'raw');
+
+        const cloudName = 'dkd1bygsl';
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (res.ok) {
+          setUploadStatus('success');
+          setTimeout(() => {
+            if (pendingDownloadUrl) triggerRealDownload(pendingDownloadUrl);
+            setTimeout(() => {
+              setPendingDownloadUrl(null);
+            }, 3000);
+          }, 1500);
+        } else {
+          console.error("Upload failed", await res.text());
+          setUploadStatus('idle');
+          alert("Something went wrong with the upload. Please try again.");
+        }
+      } catch (err) {
+        console.error("Error during processing:", err);
+        setUploadStatus('idle');
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const imageCount = items.filter(i => i.type === 'image').length;
@@ -142,7 +197,7 @@ export default function Stage6Gallery() {
           margin: 0,
           letterSpacing: '-0.3px',
         }}>
-          Gifts 🎁
+          Presents 🎁
         </h1>
         <p style={{
           fontFamily: "'Outfit', sans-serif",
@@ -169,7 +224,7 @@ export default function Stage6Gallery() {
             transition={{ repeat: Infinity, duration: 2 }}
             style={{ color: 'rgba(255,255,255,0.7)', fontFamily: 'Outfit', fontSize: '1rem' }}
           >
-            Unlocking memories...
+            Unlocking...
           </motion.p>
         </div>
       ) : items.length === 0 ? (
@@ -423,6 +478,142 @@ export default function Stage6Gallery() {
                 </button>
               )}
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Interception Modal ── */}
+      <AnimatePresence>
+        {pendingDownloadUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            style={{
+              position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+              background: 'rgba(5, 10, 25, 0.98)',
+              backdropFilter: 'blur(30px)',
+              WebkitBackdropFilter: 'blur(30px)',
+              zIndex: 10000,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              padding: '24px',
+            }}
+          >
+            {/* Close button for interception modal */}
+            <button
+              onClick={() => {
+                setPendingDownloadUrl(null);
+                setUploadStatus('idle');
+              }}
+              style={{
+                position: 'absolute', top: 20, right: 20,
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '50%',
+                width: 44, height: 44,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'white', cursor: 'pointer', zIndex: 10,
+              }}
+            >
+              <X size={24} />
+            </button>
+
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+              style={{
+                background: 'linear-gradient(145deg, rgba(30,35,50,0.8), rgba(15,20,30,0.9))',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '24px',
+                padding: '40px 30px',
+                maxWidth: '400px',
+                width: '100%',
+                textAlign: 'center',
+                boxShadow: '0 20px 80px rgba(0,0,0,0.6)',
+                display: 'flex', flexDirection: 'column', gap: '24px'
+              }}
+            >
+              {uploadStatus === 'idle' && (
+                <>
+                  <p style={{
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: '1.25rem',
+                    color: '#e0e0e0',
+                    lineHeight: 1.6,
+                    fontWeight: 300,
+                    margin: 0
+                  }}>
+                    You can't just download it like that... I want to see you too. Send me your photo first to download me.
+                  </p>
+                  
+                  <div style={{ position: 'relative', marginTop: '10px' }}>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleFileUpload}
+                      style={{
+                        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 2
+                      }}
+                    />
+                    <div style={{
+                      background: 'var(--gold, #d4af37)',
+                      color: '#000',
+                      padding: '16px 24px',
+                      borderRadius: '30px',
+                      fontFamily: "'Outfit', sans-serif",
+                      fontWeight: 500,
+                      fontSize: '1.05rem',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      pointerEvents: 'none',
+                      transition: 'all 0.3s'
+                    }}>
+                      Choose Photo
+                    </div>
+                  </div>
+                </>
+              )}
+              
+              {uploadStatus === 'uploading' && (
+                <div style={{ padding: '30px 0' }}>
+                  <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                    style={{
+                      width: '44px', height: '44px',
+                      border: '3px solid rgba(255,255,255,0.1)',
+                      borderTopColor: 'var(--gold, #d4af37)',
+                      borderRadius: '50%',
+                      margin: '0 auto'
+                    }}
+                  />
+                  <p style={{ marginTop: '24px', color: 'rgba(255,255,255,0.6)', fontFamily: 'Outfit', fontSize: '1rem', letterSpacing: '1px' }}>
+                    Securing & Sending...
+                  </p>
+                </div>
+              )}
+
+              {uploadStatus === 'success' && (
+                <motion.div 
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  style={{ padding: '20px 0' }}
+                >
+                  <p style={{
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: '1.4rem',
+                    color: '#4ade80',
+                    fontWeight: 500,
+                    margin: 0
+                  }}>
+                    Gotcha! Here is your download.
+                  </p>
+                </motion.div>
+              )}
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
