@@ -94,6 +94,8 @@ export default function Stage5Message({ onContinue }: Props) {
               lineHeight: '1.8',
               textAlign: 'left',
               fontFamily: 'Outfit, sans-serif',
+              whiteSpace: 'pre-wrap',
+              fontStyle: line.includes('-- best wishes') ? 'italic' : 'normal',
             }}
           >
             {line}
