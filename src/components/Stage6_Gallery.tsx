@@ -17,7 +17,14 @@ export default function Stage6Gallery() {
   const [pendingDownloadUrl, setPendingDownloadUrl] = useState<string | null>(null);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success'>('idle');
 
+  // ── Hold-to-Reveal State ──
+  const [isRevealed, setIsRevealed] = useState(false);
+
   const XOR_KEY = Number(import.meta.env.VITE_IMAGE_DECRYPT_KEY || 123);
+
+  useEffect(() => {
+    setIsRevealed(false);
+  }, [selectedIndex]);
 
   useEffect(() => {
     // Snowflakes
@@ -261,9 +268,9 @@ export default function Stage6Gallery() {
               {item.type === 'image' ? (
                 /* ── Image Card ── */
                 <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                  <img
+                  <motion.img
                     src={item.blobUrl}
-                    alt={`Memory ${i + 1}`}
+                    alt={`Memory locked`}
                     style={{
                       width: '100%',
                       height: '100%',
@@ -272,6 +279,8 @@ export default function Stage6Gallery() {
                       WebkitTouchCallout: 'none',
                       WebkitUserSelect: 'none',
                       userSelect: 'none',
+                      filter: 'blur(15px) brightness(0.6)',
+                      transform: 'scale(1.1)', // Prevents blur bleeding at the edges
                     }}
                   />
                   {/* subtle bottom vignette */}
@@ -385,23 +394,75 @@ export default function Stage6Gallery() {
             {/* main content */}
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '50px 0 0' }}>
               {items[selectedIndex].type === 'image' ? (
-                <motion.img
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-                  src={items[selectedIndex].blobUrl}
-                  alt="Full memory"
+                <div 
                   style={{
-                    maxWidth: '100%',
-                    maxHeight: '60vh',
-                    objectFit: 'contain',
-                    borderRadius: '14px',
-                    boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-                    WebkitTouchCallout: 'none',
-                    WebkitUserSelect: 'none',
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '100%',
+                    height: '100%',
                     userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    WebkitTouchCallout: 'none',
                   }}
-                />
+                  onPointerDown={() => setIsRevealed(true)}
+                  onPointerUp={() => setIsRevealed(false)}
+                  onPointerLeave={() => setIsRevealed(false)}
+                  onPointerCancel={() => setIsRevealed(false)}
+                  onContextMenu={(e) => e.preventDefault()}
+                >
+                  <motion.img
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    src={items[selectedIndex].blobUrl}
+                    alt="Full memory"
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '60vh',
+                      objectFit: 'contain',
+                      borderRadius: '14px',
+                      boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                      WebkitTouchCallout: 'none',
+                      WebkitUserSelect: 'none',
+                      userSelect: 'none',
+                      pointerEvents: 'none',
+                      filter: isRevealed ? 'blur(0px) brightness(1)' : 'blur(25px) brightness(0.5)',
+                      transition: 'filter 0.2s ease',
+                    }}
+                  />
+                  
+                  <AnimatePresence>
+                    {!isRevealed && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        style={{
+                          position: 'absolute',
+                          background: 'rgba(0,0,0,0.6)',
+                          backdropFilter: 'blur(10px)',
+                          WebkitBackdropFilter: 'blur(10px)',
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          padding: '16px 32px',
+                          borderRadius: '30px',
+                          color: 'white',
+                          fontFamily: "'Outfit', sans-serif",
+                          fontWeight: 500,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          pointerEvents: 'none',
+                          boxShadow: '0 10px 40px rgba(0,0,0,0.4)',
+                          zIndex: 10,
+                        }}
+                      >
+                        <span style={{ fontSize: '1.4rem' }}>👆</span> Press & Hold to Reveal
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               ) : (
                 <motion.div
                   initial={{ scale: 0.9, opacity: 0, rotate: -1 }}
