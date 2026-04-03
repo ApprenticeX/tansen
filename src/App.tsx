@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import { Analytics } from '@vercel/analytics/react';
 import AudioPlayer from './components/AudioPlayer';
 import Stage1Age from './components/Stage1_Age';
 import Stage2Greeting from './components/Stage2_Greeting';
@@ -83,6 +84,7 @@ function App() {
         {stage === 5 && <Stage5Message key="stage5" onContinue={advanceStage} />}
         {stage === 6 && <Stage6Gallery key="stage6" />}
       </AnimatePresence>
+      <Analytics />
     </>
   );
 }
